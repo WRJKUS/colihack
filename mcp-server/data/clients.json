@@ -1,5 +1,16 @@
 [
   {
+    "name": "collibra-hack",
+    "aliases": ["collibra hack", "collibra sandbox", "test client"],
+    "vat_number": "BE0999787908",
+    "peppol_id": "0208:0999787908",
+    "address": "Teststraat 1, 1000 Brussel",
+    "contact_email": "collibra-hack+5xcjxjfvfw8073c16oq27jza9pdnsoac@outbox.email.e-invoice.be",
+    "default_hourly_rate": 100,
+    "payment_terms_days": 30,
+    "notes": "Our own sandbox company — use this for send-to-self demo testing"
+  },
+  {
     "name": "Proximus NV",
     "aliases": ["Proximus", "Proximus telecom"],
     "vat_number": "BE0202239951",
