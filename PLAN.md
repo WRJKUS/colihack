@@ -71,6 +71,15 @@ This plan is grounded in the actual docs (e-invoice.be `llms.txt` + schema/auth 
 4. Keep `lookup-peppol.js` (`/api/lookup/participants` is correct), `get-vat-rate.js`, `book-entries.js` (local logic, fine).
 5. `curl`-test every tool against the live sandbox before wiring the agent (credentials available).
 
+### Phase 1.5 — Data-entry frontend: customers, services & invoice data — ✅ DONE (wolf track)
+**Implemented on the Cloudflare Worker (stateless → no filesystem) using Cloudflare KV as the writable store.** Bundled JSON is the seed; once edited, KV is the source of truth, and the MCP tools read from it.
+- **3a store/CRUD (live-verified):** `GET/POST/PUT/DELETE /api/customers` + `/api/services` (id-keyed, KV-backed), `GET/PUT /api/seller`. The `/mcp` handler loads customers/services from KV per request and injects the (editable) seller into the invoice. Verified: POSTing a customer makes `wolf_lookup_client` find it (`source: local_database`); same for services → `wolf_lookup_service`; seller PUT roundtrips.
+- **3c management UI:** `frontend-wolf` "Manage data" tab → Customers / Services / Company sub-tabs (list + add/edit/delete forms, MOD97 validity warning on PEPPOL numbers). Deployed.
+- ⚠️ CRUD endpoints are **open** (no auth) for the demo — same trade-off as `/api/run` (the MCP secret can't live in the browser). Add an admin key to lock down.
+- `lookup_service` (3b) was completed earlier.
+
+Original spec below:
+
 ### Phase 1.5 — Data-entry frontend: customers, services & invoice data (NEW)
 **Why:** today customers are a static seed (`mcp-server/data/clients.json`, loaded once at startup) and there is **no service/product catalog at all**. For the plumber to say *"write an invoice for 1 hour of work plus the drive to Ingram for fixing their toilet,"* the agent must resolve **"Ingram" → a customer record**, **"1 hour of work" → a labour service** (unit price + VAT), and **"the drive" → a travel/call-out service**. None of that data is enterable today. This phase adds the UI + backing store to manage it.
 

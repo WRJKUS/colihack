@@ -8,6 +8,12 @@ compatibility_flags = ["nodejs_compat"]
 [ai]
 binding = "AI"
 
+# Writable store for customers / services / seller (CRUD via /api/*). The bundled
+# JSON files are the seed; once edited, KV is the source of truth (tools read it).
+[[kv_namespaces]]
+binding = "STORE"
+id = "0359ffa5250f4c1491f741fbe7465fe0"
+
 # Non-secret config. The seller identity is read from these on Workers (no
 # filesystem for seller.json). TOOL_PREFIX namespaces the tools as wolf_*.
 [vars]

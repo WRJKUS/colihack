@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { runAgent, resolveApproval, transcribe, AgentEvent, RunIds } from "./lib/agent";
+import Manage from "./Manage";
 
 // Encode captured Float32 audio chunks as a 16-bit PCM WAV Blob (Whisper-friendly).
 function encodeWAV(chunks: Float32Array[], sampleRate: number): Blob {
@@ -37,6 +38,7 @@ const TOOL_LABEL: Record<string, string> = {
 const label = (t: string) => TOOL_LABEL[t] ?? t;
 
 export default function App() {
+  const [view, setView] = useState<"invoice" | "manage">("invoice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recording, setRecording] = useState(false);
@@ -157,8 +159,15 @@ export default function App() {
       <header className="topbar">
         <span className="logo">🎙️ Voice Invoice</span>
         <span className="sub">Belgian field-worker invoicing · PEPPOL</span>
+        <nav className="nav">
+          <button className={view === "invoice" ? "on" : ""} onClick={() => setView("invoice")}>Invoice</button>
+          <button className={view === "manage" ? "on" : ""} onClick={() => setView("manage")}>Manage data</button>
+        </nav>
       </header>
 
+      {view === "manage" && <main className="main"><Manage /></main>}
+
+      {view === "invoice" && (
       <main className="main">
         {error && <div className="error">⚠️ {error}</div>}
 
@@ -230,6 +239,7 @@ export default function App() {
           </section>
         )}
       </main>
+      )}
     </div>
   );
 }
