@@ -4,6 +4,19 @@ const BASE =
   (import.meta as any).env?.VITE_PROXY_BASE ||
   "https://einvoice-wolf.riegler31.workers.dev";
 
+export interface InvoiceListItem {
+  id: string; invoice_id?: string; customer_name?: string;
+  invoice_total?: string | number; currency?: string; state?: string;
+  invoice_date?: string; created_at?: string;
+}
+
+export async function listInvoices(): Promise<InvoiceListItem[]> {
+  const r = await fetch(`${BASE}/api/invoices`);
+  if (!r.ok) throw new Error(`${r.status} ${await r.text().catch(() => "")}`);
+  const j = await r.json();
+  return j.items || [];
+}
+
 export async function getDocument(id: string): Promise<any> {
   const r = await fetch(`${BASE}/api/document?id=${encodeURIComponent(id)}`);
   if (!r.ok) throw new Error(`${r.status} ${await r.text().catch(() => "")}`);

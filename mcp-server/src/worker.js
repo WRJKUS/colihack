@@ -131,6 +131,25 @@ export default {
       return json({ error: "method not allowed" }, 405);
     }
 
+    // --- List our invoices (sent + drafts), merged + slimmed, newest first ---
+    if (request.method === "GET" && pathname === "/api/invoices") {
+      const h = { Authorization: `Bearer ${env.EINVOICE_API_KEY}` };
+      const [sentR, draftR] = await Promise.all([
+        fetch(`${EINVOICE}/api/outbox/?page_size=100`, { headers: h }),
+        fetch(`${EINVOICE}/api/outbox/drafts?page_size=100`, { headers: h })
+      ]);
+      const items = (r) => r.ok ? r.json().then((j) => j.items || []) : Promise.resolve([]);
+      const [sent, drafts] = await Promise.all([items(sentR), items(draftR)]);
+      const slim = (x) => ({
+        id: x.id, invoice_id: x.invoice_id, customer_name: x.customer_name,
+        invoice_total: x.invoice_total, currency: x.currency, state: x.state,
+        invoice_date: x.invoice_date, created_at: x.created_at
+      });
+      const all = [...sent, ...drafts].map(slim)
+        .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+      return json({ items: all });
+    }
+
     // --- Document retrieval for PDF generation (JSON) — key stays server-side ---
     if (request.method === "GET" && pathname === "/api/document") {
       const id = url.searchParams.get("id");

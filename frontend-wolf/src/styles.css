@@ -107,6 +107,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 .done h3 { color: var(--green); }
 .muted { color: var(--muted); }
+.badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.badge.sent { background: #dcfce7; color: #15803d; }
+.badge.draft { background: #fef3c7; color: #b45309; }
+.badge.transit { background: #dbeafe; color: #1d4ed8; }
+.badge.failed { background: #fee2e2; color: #b91c1c; }
 .downloads { display: flex; gap: 10px; margin: 12px 0; flex-wrap: wrap; }
 .downloads .ghost { padding: 8px 14px; }
 .error { background: #fef2f2; border: 1px solid #fecaca; color: var(--red); padding: 10px 14px; border-radius: 8px; }

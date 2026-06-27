@@ -3,6 +3,7 @@ import { runAgent, resolveApproval, transcribe, AgentEvent, RunIds } from "./lib
 import { getDocument, ublDownloadUrl, triggerDownload } from "./lib/doc";
 import { downloadInvoicePDF } from "./lib/pdf";
 import Manage from "./Manage";
+import Invoices from "./Invoices";
 
 // Encode captured Float32 audio chunks as a 16-bit PCM WAV Blob (Whisper-friendly).
 function encodeWAV(chunks: Float32Array[], sampleRate: number): Blob {
@@ -40,7 +41,7 @@ const TOOL_LABEL: Record<string, string> = {
 const label = (t: string) => TOOL_LABEL[t] ?? t;
 
 export default function App() {
-  const [view, setView] = useState<"invoice" | "manage">("invoice");
+  const [view, setView] = useState<"invoice" | "invoices" | "manage">("invoice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recording, setRecording] = useState(false);
@@ -185,11 +186,13 @@ export default function App() {
         <span className="logo">🎙️ Voice Invoice</span>
         <span className="sub">Belgian field-worker invoicing · PEPPOL</span>
         <nav className="nav">
-          <button className={view === "invoice" ? "on" : ""} onClick={() => setView("invoice")}>Invoice</button>
+          <button className={view === "invoice" ? "on" : ""} onClick={() => setView("invoice")}>New invoice</button>
+          <button className={view === "invoices" ? "on" : ""} onClick={() => setView("invoices")}>Invoices</button>
           <button className={view === "manage" ? "on" : ""} onClick={() => setView("manage")}>Manage data</button>
         </nav>
       </header>
 
+      {view === "invoices" && <main className="main"><Invoices /></main>}
       {view === "manage" && <main className="main"><Manage /></main>}
 
       {view === "invoice" && (

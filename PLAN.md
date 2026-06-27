@@ -146,6 +146,8 @@ Invoice preview, T-account display, <30s wall-clock from speech to "sent".
 
 **PDF / UBL download (done):** e-invoice.be does **not** render PDFs (verified: `/{id}/pdf` 404; only JSON + UBL retrieval exist). So the PDF is generated client-side with jsPDF from the document JSON. Worker proxy adds `GET /api/document?id=` (JSON, for the PDF) and `GET /api/document/ubl?id=` (follows e-invoice's `signed_url` and streams the UBL XML as a download). `frontend-wolf` shows "Download PDF" + "Download UBL (XML)" in the approval and confirmation panels (`document_id` captured from `approval.required`). Proxy routes live-verified; PDF render is browser-side (jsPDF).
 
+**Invoices list (done):** an **Invoices** tab lists all created invoices (sent + drafts) with per-row PDF + UBL download. e-invoice.be has no universal list endpoint — the real ones (from the OpenAPI spec) are `GET /api/outbox/` (sent) and `GET /api/outbox/drafts`. The Worker `GET /api/invoices` fetches both, merges + slims + sorts newest-first. Live-verified (29 invoices).
+
 ---
 
 ## 3b. Sender Peppol identity — RESOLVED
