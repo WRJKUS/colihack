@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.env
+.env.*
+*.log
+.DS_Store
+Dockerfile
+.dockerignore
+fly.toml
+DEPLOY.md
+WOLFGANG.md
+wrangler.toml
+.dev.vars
+.wrangler

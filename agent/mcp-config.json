@@ -1,13 +1,15 @@
 {
   "name": "einvoice",
-  "description": "e-invoice.be PEPPOL tools for invoice creation and sending",
-  "url": "https://YOUR_MCP_SERVER_URL/mcp",
+  "description": "e-invoice.be PEPPOL tools + local catalog for Belgian field-worker invoicing",
+  "url": "https://YOUR_PUBLIC_MCP_URL/mcp",
   "auth": {
     "kind": "static",
     "secret": "YOUR_MCP_AUTH_SECRET"
   },
   "tool_allowlist": [
-    "lookup_peppol_participant",
+    "lookup_client",
+    "get_vat_rate",
+    "lookup_service",
     "create_invoice",
     "validate_invoice",
     "send_invoice",

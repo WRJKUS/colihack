@@ -1,0 +1,26 @@
+# Fly.io config for the einvoice-wolf MCP server.
+# Change `app` to a globally-unique name (and match it in `fly apps create`).
+app = "colihack-mcp-wolf"
+primary_region = "ams"   # Amsterdam — close to Belgium
+
+[build]
+
+[env]
+  PORT = "3001"
+  TOOL_PREFIX = "wolf_"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  # Scale to zero when idle to stay within the free allowance.
+  # Bump min_machines_running to 1 before a live demo to avoid cold starts.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"

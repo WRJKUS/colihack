@@ -1,0 +1,21 @@
+{
+  "name": "einvoice-wolf",
+  "description": "Wolfgang's e-invoice.be PEPPOL tools (prefixed, fixed code) — separate from the shared 'einvoice' MCP",
+  "url": "https://YOUR_PUBLIC_MCP_URL/mcp",
+  "auth": {
+    "kind": "static",
+    "secret": "YOUR_MCP_AUTH_SECRET"
+  },
+  "tool_allowlist": [
+    "wolf_lookup_client",
+    "wolf_get_vat_rate",
+    "wolf_lookup_service",
+    "wolf_create_invoice",
+    "wolf_validate_invoice",
+    "wolf_send_invoice",
+    "wolf_book_entries"
+  ],
+  "approval_policy": [
+    { "match": "wolf_send_invoice", "require": "approval" }
+  ]
+}

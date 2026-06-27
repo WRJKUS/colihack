@@ -1,0 +1,82 @@
+[
+  {
+    "code": "LAB-STD",
+    "label": "Main-d'œuvre plombier (heure)",
+    "aliases": ["labour", "work", "uur werk", "1 hour of work", "manpower", "arbeid", "plumbing work"],
+    "type": "labour",
+    "unit": "HUR",
+    "unit_price": 65.00,
+    "tax_rate": "21",
+    "description": "Standard plumber labour, billed per hour."
+  },
+  {
+    "code": "LAB-EMERGENCY",
+    "label": "Main-d'œuvre urgence (heure)",
+    "aliases": ["emergency", "urgence", "spoed", "after hours", "weekend callout"],
+    "type": "labour",
+    "unit": "HUR",
+    "unit_price": 110.00,
+    "tax_rate": "21",
+    "description": "Out-of-hours / emergency labour rate, billed per hour."
+  },
+  {
+    "code": "TRV-CALLOUT",
+    "label": "Frais de déplacement (forfait)",
+    "aliases": ["the drive", "drive", "callout", "call-out", "déplacement", "verplaatsing", "travel", "trip"],
+    "type": "travel",
+    "unit": "C62",
+    "unit_price": 45.00,
+    "tax_rate": "21",
+    "description": "Flat call-out / travel fee per visit."
+  },
+  {
+    "code": "TRV-KM",
+    "label": "Déplacement au kilomètre",
+    "aliases": ["per km", "kilometre", "mileage", "kilometervergoeding", "distance"],
+    "type": "travel",
+    "unit": "KMT",
+    "unit_price": 0.50,
+    "tax_rate": "21",
+    "description": "Per-kilometre travel charge (alternative to flat call-out)."
+  },
+  {
+    "code": "PRT-THERMOSTAT",
+    "label": "Thermostat de chauffe-eau",
+    "aliases": ["thermostat", "boiler thermostat"],
+    "type": "parts",
+    "unit": "C62",
+    "unit_price": 38.00,
+    "tax_rate": "21",
+    "description": "Replacement water-heater thermostat."
+  },
+  {
+    "code": "PRT-MIXER-TAP",
+    "label": "Mitigeur (robinet)",
+    "aliases": ["mixer tap", "mitigeur", "kraan", "faucet", "tap"],
+    "type": "parts",
+    "unit": "C62",
+    "unit_price": 89.00,
+    "tax_rate": "21",
+    "description": "Single-lever mixer tap."
+  },
+  {
+    "code": "PRT-FLEX-HOSE",
+    "label": "Flexible de raccordement",
+    "aliases": ["flexible hose", "flexible", "connection hose", "slang"],
+    "type": "parts",
+    "unit": "C62",
+    "unit_price": 12.50,
+    "tax_rate": "21",
+    "description": "Flexible connection hose."
+  },
+  {
+    "code": "PRT-TOILET-FILL-VALVE",
+    "label": "Mécanisme de chasse / robinet flotteur",
+    "aliases": ["toilet fill valve", "flush mechanism", "vlotter", "chasse", "cistern valve"],
+    "type": "parts",
+    "unit": "C62",
+    "unit_price": 24.00,
+    "tax_rate": "21",
+    "description": "Toilet cistern fill/flush valve mechanism."
+  }
+]
