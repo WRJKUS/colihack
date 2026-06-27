@@ -1,46 +1,56 @@
-# Daniel — Frontend UI (Lovable)
+# Daniel — Frontend (Lovable)
 
-You own the frontend: a polished React app built with Lovable that lets a field worker speak a job description and watch the invoice flow happen live.
+You own the frontend: a polished React app where a field worker speaks a job description and watches the invoice flow happen live on screen.
 
 ## What you're building
 
-4 sequential panels on one page:
-
+4 sequential panels:
 1. **Mic panel** — big record button, live transcript
-2. **Invoice preview** — extracted fields, editable, PEPPOL validation badge
+2. **Invoice preview** — extracted fields, editable, PEPPOL Valid badge
 3. **Approval panel** — "Send €278.07 to Martens Sanitair?" + one green button
-4. **Confirmation** — success message + double-entry T-accounts (debit/credit)
+4. **Confirmation** — success + double-entry T-accounts
 
-## Step 1 — Generate the UI in Lovable
+## Step 1 — Generate UI in Lovable
 
-1. Go to [lovable.dev](https://lovable.dev) and start a new project
-2. Open `frontend/lovable-prompt.md` in this repo — paste that prompt into Lovable
-3. Let Lovable generate the full UI
+1. Go to [lovable.dev](https://lovable.dev) → new project
+2. Open `frontend/lovable-prompt.md` → paste into Lovable
+3. Let it generate the full React app
 
-## Step 2 — Connect Lovable to this GitHub repo
+## Step 2 — Connect to GitHub
 
 In Lovable: **Settings → GitHub → Connect repository**
 - Repo: `bsselm/colihack`
 - Branch: `main`
-- Folder: `frontend/`
+- Subfolder: `frontend/`
 
-Lovable will push its generated code directly into the `frontend/` folder. Pull after connecting.
+## Step 3 — Environment variables
 
-## Step 3 — Wire up the mic (Web Speech API)
+In Lovable project settings, add:
+```
+VITE_INGRAM_TOKEN=<token from Bassel>
+VITE_AGENT_ID=<agt_... from Bassel>
+```
 
-In your `MicButton` component, add:
+Update `frontend/lib/ingram.ts` line 2:
+```typescript
+const API_KEY = import.meta.env.VITE_INGRAM_TOKEN ?? "";
+```
+
+## Step 4 — Wire the mic (Web Speech API)
 
 ```typescript
 const startRecording = () => {
-  const recognition = new (window as any).webkitSpeechRecognition();
-  recognition.lang = 'nl-BE'; // Dutch Belgian — change to fr-BE for French
+  const SpeechRecognition =
+    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const recognition = new SpeechRecognition();
+  recognition.lang = "nl-BE"; // Dutch Belgian for demo
   recognition.continuous = false;
   recognition.interimResults = true;
 
   recognition.onresult = (event: any) => {
     const transcript = Array.from(event.results)
       .map((r: any) => r[0].transcript)
-      .join('');
+      .join("");
     setTranscript(transcript);
   };
 
@@ -50,57 +60,63 @@ const startRecording = () => {
 };
 ```
 
-## Step 4 — Wire up Ingram Cloud
-
-Bassel will give you the `INGRAM_TOKEN` and the Smith ID. Use the helper in `frontend/lib/ingram.ts`:
+## Step 5 — Wire Ingram Cloud
 
 ```typescript
-import { runInvoiceAgent, approveToolCall } from '../lib/ingram';
+import { createSmith, runInvoiceAgent, streamRun, approveToolCall } from "../lib/ingram";
 
-// When user clicks "Process" after transcript is ready:
-const response = await runInvoiceAgent(SMITH_ID, transcript, threadId);
+const AGENT_ID = import.meta.env.VITE_AGENT_ID;
 
-// Stream SSE events — listen for:
-// - message.delta → update the invoice preview fields
-// - approval.required → show the Approval Panel with the approval_id
-// - run.completed → show the Confirmation Panel
-```
+// On page load — safe to call every time (upsert)
+const smith = await createSmith("demo_user_1", "Field Worker", AGENT_ID);
+const smithId = smith.id; // smt_...
 
-## Step 5 — Handle the approval moment
+// When user clicks "Process"
+const onProcess = async () => {
+  const threadId = `thread_${Date.now()}`;
+  const response = await runInvoiceAgent(smithId, transcript, threadId);
 
-When the agent is ready to send the invoice, Ingram Cloud fires an `approval.required` SSE event. This is the "accountant just signs" moment — show the Approval Panel:
+  await streamRun(response, {
+    onDelta: (text) => {
+      // Agent is thinking/responding — update invoice preview fields
+      setAgentOutput(prev => prev + text);
+    },
+    onApprovalRequired: (approvalId) => {
+      // Agent is ready to send — show approval modal
+      setApprovalId(approvalId);
+      setShowApproval(true);
+    },
+    onCompleted: () => {
+      // Everything done — show confirmation + T-accounts
+      setShowConfirmation(true);
+    },
+    onError: (err) => console.error(err)
+  });
+};
 
-```typescript
-if (event.type === 'approval.required') {
-  setApprovalId(event.approval_id);
-  setShowApprovalPanel(true);
-}
-
-// When user clicks "Approve & Send":
+// When user clicks "Approve & Send"
 const onApprove = async () => {
-  await approveToolCall(SMITH_ID, runId, approvalId);
-  // Agent resumes, invoice sends, confirmation panel appears
+  await approveToolCall(approvalId);
+  setShowApproval(false);
+  // onCompleted fires from the resumed stream
 };
 ```
 
-## Step 6 — Environment variables
+## Step 6 — State to track
 
-Create `frontend/.env.local`:
+```typescript
+const [transcript, setTranscript] = useState("");
+const [isRecording, setIsRecording] = useState(false);
+const [agentOutput, setAgentOutput] = useState("");
+const [approvalId, setApprovalId] = useState("");
+const [showApproval, setShowApproval] = useState(false);
+const [showConfirmation, setShowConfirmation] = useState(false);
 ```
-NEXT_PUBLIC_INGRAM_TOKEN=your_token_from_bassel
-NEXT_PUBLIC_SMITH_ID=smt_...  # Bassel creates this for you
-```
-
-## Key files
-
-| File | Purpose |
-|------|---------|
-| `frontend/lovable-prompt.md` | The Lovable generation prompt |
-| `frontend/lib/ingram.ts` | Ingram Cloud API calls (already written) |
 
 ## Notes for the demo
 
-- Use **Chrome** — Web Speech API doesn't work in Firefox/Safari
-- Set the mic language to `nl-BE` (Dutch) for the demo — judges are Belgian
-- The approval modal is the money moment — make it big and clear
-- Keep the bookkeeping T-accounts visible on screen during the pitch
+- Use **Chrome** — Web Speech API only works in Chrome
+- Language is `nl-BE` (Belgian Dutch) — judges are Belgian
+- The approval modal is the money moment — make it visually bold
+- The T-account display must be on screen during the pitch
+- After "Approve & Send", the invoice is actually sent via PEPPOL — this is real

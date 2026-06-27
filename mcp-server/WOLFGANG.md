@@ -1,54 +1,64 @@
-# Wolfgang — MCP Server (Tools → e-invoice.be)
+# Wolfgang — MCP Server
 
-You own the MCP server: a small Node.js app that exposes 5 tools the AI agent calls to create and send PEPPOL invoices. Your goal is to get this deployed to Vercel and give Bassel the URL.
+You own the MCP server: a Node.js app exposing 5 tools the AI agent calls to create and send PEPPOL invoices via e-invoice.be. Your goal: deploy to Vercel and send Bassel the URL.
 
-## Setup (start here)
+## Setup
 
 ```bash
-# Clone the repo
 git clone https://github.com/bsselm/colihack
 cd colihack/mcp-server
 
-# Install dependencies
 npm install
 
-# Set up environment variables
 cp .env.example .env
-# Fill in .env with the values Bassel sends you:
+# Fill in .env with values Bassel sends you:
 #   EINVOICE_API_KEY=...
 #   SENDER_PEPPOL_SCHEME=0208
 #   SENDER_PEPPOL_ID=...
+#   MCP_AUTH_SECRET=...   ← Bassel generates this, same value both sides
 
-# Run locally
 npm run dev
 # Server starts on http://localhost:3001
 ```
 
-## Test locally before deploying
+## Test locally
+
+The server speaks MCP JSON-RPC 2.0 over `POST /mcp`. Test each tool:
 
 ```bash
-# Test the health endpoint
+# Health check (no auth needed)
 curl http://localhost:3001/health
 
-# Test PEPPOL lookup
-curl -X POST http://localhost:3001/mcp/tools/call \
+# PEPPOL participant lookup
+curl -X POST http://localhost:3001/mcp \
   -H "Content-Type: application/json" \
-  -d '{"name": "lookup_peppol_participant", "arguments": {"query": "Proximus", "country_code": "BE"}}'
+  -H "Authorization: Bearer YOUR_MCP_AUTH_SECRET" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
-# Test invoice creation
-curl -X POST http://localhost:3001/mcp/tools/call \
+# List tools
+curl -X POST http://localhost:3001/mcp \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_MCP_AUTH_SECRET" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"lookup_peppol_participant","arguments":{"query":"Proximus","country_code":"BE"}}}'
+
+# Create test invoice
+curl -X POST http://localhost:3001/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_MCP_AUTH_SECRET" \
   -d '{
-    "name": "create_invoice",
-    "arguments": {
-      "seller_name": "Test Company",
-      "seller_vat": "BE0123456789",
-      "buyer_name": "Proximus",
-      "buyer_peppol_id": "0208:0202239951",
-      "lines": [
-        {"description": "Labour", "quantity": 3, "unit_price": 65, "vat_rate": 21},
-        {"description": "Parts", "quantity": 1, "unit_price": 87, "vat_rate": 21}
-      ]
+    "jsonrpc":"2.0","id":3,"method":"tools/call",
+    "params":{
+      "name":"create_invoice",
+      "arguments":{
+        "seller_name":"Test Company",
+        "seller_vat":"BE0123456789",
+        "buyer_name":"Proximus",
+        "buyer_peppol_id":"0208:0202239951",
+        "lines":[
+          {"description":"Labour","quantity":3,"unit_price":65,"vat_rate":21},
+          {"description":"Parts","quantity":1,"unit_price":87,"vat_rate":21}
+        ]
+      }
     }
   }'
 ```
@@ -56,44 +66,38 @@ curl -X POST http://localhost:3001/mcp/tools/call \
 ## Deploy to Vercel
 
 ```bash
-# Install Vercel CLI (if not already installed)
+# Install Vercel CLI
 npm install -g vercel
 
-# Deploy from the mcp-server folder
-cd colihack/mcp-server
+# Deploy from mcp-server folder
 vercel
 
-# When prompted:
-#   - Link to existing project? No
-#   - Project name: colihack-mcp-server
-#   - Directory: ./
-#   - Override settings? No
-
-# Add environment variables in Vercel dashboard or via CLI:
+# Add env vars
 vercel env add EINVOICE_API_KEY
 vercel env add SENDER_PEPPOL_SCHEME
 vercel env add SENDER_PEPPOL_ID
+vercel env add MCP_AUTH_SECRET
 
-# Redeploy with env vars
+# Production deploy
 vercel --prod
 ```
 
-**Give Bassel the Vercel URL** (e.g. `https://colihack-mcp-server.vercel.app`) so he can register it in Ingram Cloud.
+**Send Bassel your Vercel URL** (e.g. `https://colihack-mcp-server.vercel.app`) so he can register it in Ingram Cloud.
 
 ## Your 5 tools
 
 | Tool | File | What it does |
-|------|------|--------------|
-| `lookup_peppol_participant` | `src/tools/lookup-peppol.js` | Finds a company's PEPPOL ID by name |
-| `create_invoice` | `src/tools/create-invoice.js` | Creates invoice via e-invoice.be API |
-| `validate_invoice` | `src/tools/validate-invoice.js` | Validates PEPPOL compliance |
-| `send_invoice` | `src/tools/send-invoice.js` | Sends via PEPPOL (approval-gated!) |
-| `book_entries` | `src/tools/book-entries.js` | Generates double-entry ledger entries |
+|------|------|-------------|
+| `lookup_peppol_participant` | `src/tools/lookup-peppol.js` | Finds company PEPPOL ID by name |
+| `create_invoice` | `src/tools/create-invoice.js` | Creates invoice via e-invoice.be |
+| `validate_invoice` | `src/tools/validate-invoice.js` | PEPPOL compliance check |
+| `send_invoice` | `src/tools/send-invoice.js` | Sends via PEPPOL — approval-gated! |
+| `book_entries` | `src/tools/book-entries.js` | Generates double-entry ledger |
 
-## Important: `send_invoice` is approval-gated
+## Important: auth middleware
 
-The agent will PAUSE before calling `send_invoice` and ask the user to approve. This is intentional — it's our "accountant just signs" moment for the judges. Do not remove the `destructiveHint: true` annotation in `src/index.js`.
+Ingram Cloud sends `Authorization: Bearer YOUR_MCP_AUTH_SECRET` on every request. The server checks this in `authMiddleware`. Make sure the `MCP_AUTH_SECRET` env var in Vercel exactly matches what Bassel used when registering the MCP server.
 
-## If the e-invoice.be API returns errors
+## Important: send_invoice is approval-gated
 
-Check the API docs at [docs.e-invoice.be](https://docs.e-invoice.be) and [api.e-invoice.be/docs](https://api.e-invoice.be/docs). The sandbox company credentials Bassel shares should work for all endpoints.
+`send_invoice` has `destructiveHint: true` in the tool definition. This causes Ingram Cloud to pause before executing it and ask the user to approve. Do not remove this annotation — it's our "accountant just signs" demo moment.

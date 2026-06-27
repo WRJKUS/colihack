@@ -2,7 +2,10 @@
   "name": "einvoice",
   "description": "e-invoice.be PEPPOL tools for invoice creation and sending",
   "url": "https://YOUR_MCP_SERVER_URL/mcp",
-  "auth": { "kind": "static" },
+  "auth": {
+    "kind": "static",
+    "secret": "YOUR_MCP_AUTH_SECRET"
+  },
   "tool_allowlist": [
     "lookup_peppol_participant",
     "create_invoice",

@@ -8,6 +8,15 @@ import { bookEntries } from "./tools/book-entries.js";
 const app = express();
 app.use(express.json());
 
+// Verify Ingram Cloud static auth token
+function authMiddleware(req, res, next) {
+  const expected = `Bearer ${process.env.MCP_AUTH_SECRET}`;
+  if (req.headers.authorization !== expected) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  next();
+}
+
 const TOOLS = [
   {
     name: "lookup_peppol_participant",
@@ -93,28 +102,42 @@ const TOOLS = [
   }
 ];
 
-// MCP tool list endpoint
-app.get("/mcp/tools/list", (req, res) => {
-  res.json({ tools: TOOLS });
-});
-
-// MCP tool call endpoint
-app.post("/mcp/tools/call", async (req, res) => {
-  const { name, arguments: args } = req.body;
-  try {
-    let result;
-    switch (name) {
-      case "lookup_peppol_participant": result = await lookupPeppolParticipant(args); break;
-      case "create_invoice":           result = await createInvoice(args); break;
-      case "validate_invoice":         result = await validateInvoice(args); break;
-      case "send_invoice":             result = await sendInvoice(args); break;
-      case "book_entries":             result = await bookEntries(args); break;
-      default: return res.status(404).json({ error: `Unknown tool: ${name}` });
-    }
-    res.json({ content: [{ type: "text", text: JSON.stringify(result) }] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+async function dispatch(name, args) {
+  switch (name) {
+    case "lookup_peppol_participant": return lookupPeppolParticipant(args);
+    case "create_invoice":           return createInvoice(args);
+    case "validate_invoice":         return validateInvoice(args);
+    case "send_invoice":             return sendInvoice(args);
+    case "book_entries":             return bookEntries(args);
+    default: throw new Error(`Unknown tool: ${name}`);
   }
+}
+
+// MCP JSON-RPC 2.0 endpoint — Ingram Cloud calls POST /mcp
+app.post("/mcp", authMiddleware, async (req, res) => {
+  const { method, params, id } = req.body;
+
+  if (method === "tools/list") {
+    return res.json({ jsonrpc: "2.0", id, result: { tools: TOOLS } });
+  }
+
+  if (method === "tools/call") {
+    const { name, arguments: args } = params;
+    try {
+      const result = await dispatch(name, args);
+      return res.json({
+        jsonrpc: "2.0", id,
+        result: { content: [{ type: "text", text: JSON.stringify(result) }] }
+      });
+    } catch (err) {
+      return res.json({
+        jsonrpc: "2.0", id,
+        error: { code: -32000, message: err.message }
+      });
+    }
+  }
+
+  res.json({ jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } });
 });
 
 app.get("/health", (_, res) => res.json({ ok: true }));

@@ -1,0 +1,10 @@
+{
+  "event": "meeting.completed",
+  "smith_id": "donna_user_abc",
+  "meeting": {
+    "date": "2026-06-27",
+    "client": "Martens Sanitair",
+    "summary": "Repaired boiler. Replaced pump and thermostat. Labour 3 hours at €65/hr. Parts total €87.",
+    "contact_email": "jan.martens@martenssanitair.be"
+  }
+}
