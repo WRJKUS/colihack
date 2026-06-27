@@ -57,9 +57,11 @@ curl https://api.cloud.ingram.tech/v1/agents \
 
 ---
 
-## Step 4 — Register MCP Server (wait for Wolfgang's Vercel URL)
+## Step 4 — Register MCP Server (wait for Wolfgang's ngrok URL)
 
-Replace `WOLFGANG_VERCEL_URL` and `YOUR_MCP_AUTH_SECRET`:
+Wolfgang runs `npm run dev` then `npx ngrok http 3001` and sends you a URL like `https://abc123.ngrok-free.app`.
+
+Replace `NGROK_URL` and `MCP_AUTH_SECRET` (`667f7e47655dbac5805f2118570a1af6`):
 
 ```bash
 curl -X PUT https://api.cloud.ingram.tech/v1/tenant/mcp/einvoice \
@@ -67,8 +69,8 @@ curl -X PUT https://api.cloud.ingram.tech/v1/tenant/mcp/einvoice \
   -H "IC-Api-Version: 2026-05-01" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://WOLFGANG_VERCEL_URL/mcp",
-    "auth": { "kind": "static", "secret": "YOUR_MCP_AUTH_SECRET" },
+    "url": "https://NGROK_URL/mcp",
+    "auth": { "kind": "static", "secret": "667f7e47655dbac5805f2118570a1af6" },
     "tool_allowlist": [
       "lookup_client",
       "get_vat_rate",

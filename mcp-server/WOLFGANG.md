@@ -43,7 +43,7 @@ npm run dev
 
 ## Knowledge base
 
-`data/clients.json` — 6 pre-seeded Belgian companies with PEPPOL IDs, default rates, and notes. The `lookup_client` tool searches this first (instant, reliable for demo) then falls back to the live PEPPOL network.
+`data/clients.json` — 7 pre-seeded Belgian companies with PEPPOL IDs, default rates, and notes. The `lookup_client` tool searches this first (instant, reliable for demo) then falls back to the live PEPPOL network.
 
 `data/vat-rules.json` — Belgian VAT rules used by `get_vat_rate`.
 
@@ -99,24 +99,22 @@ curl -X POST http://localhost:3001/mcp \
 
 ---
 
-## Deploy to Vercel
+## Expose locally so Ingram Cloud can reach you
+
+No Vercel needed — just expose your local server with ngrok:
 
 ```bash
-npm install -g vercel
-vercel
-
-# Add env vars (one by one when prompted, or via Vercel dashboard)
-vercel env add EINVOICE_API_KEY
-vercel env add SENDER_PEPPOL_SCHEME
-vercel env add SENDER_PEPPOL_ID
-vercel env add SELLER_NAME
-vercel env add SELLER_VAT
-vercel env add MCP_AUTH_SECRET
-
-vercel --prod
+# Install ngrok if you don't have it: https://ngrok.com/download
+# OR use the one-liner with npx:
+npx ngrok http 3001
 ```
 
-**Send Bassel your Vercel URL** (e.g. `https://colihack-mcp-server.vercel.app`) as soon as it's deployed. He needs it to register the MCP server in Ingram Cloud.
+You'll see output like:
+```
+Forwarding  https://abc123.ngrok-free.app -> http://localhost:3001
+```
+
+**Send Bassel that HTTPS URL** (e.g. `https://abc123.ngrok-free.app`). He needs it to register the MCP server in Ingram Cloud. Keep ngrok running the whole time.
 
 ---
 
@@ -137,7 +135,7 @@ Edit `data/clients.json` and add entries in this format:
 }
 ```
 
-Commit and push — the Vercel deployment auto-updates.
+Commit and push — restart `npm run dev` to reload.
 
 ---
 
