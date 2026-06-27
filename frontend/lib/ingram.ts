@@ -1,13 +1,12 @@
 const BASE_URL = "https://api.cloud.ingram.tech/v1";
-const API_KEY = process.env.NEXT_PUBLIC_INGRAM_TOKEN ?? "";
+const API_KEY = (import.meta as { env: Record<string, string> }).env?.VITE_INGRAM_TOKEN ?? "";
 
 const headers = () => ({
   Authorization: `Bearer ${API_KEY}`,
   "IC-Api-Version": "2026-05-01",
-  "Content-Type": "application/json"
+  "Content-Type": "application/json",
 });
 
-// Call once per user on page load — safe to call repeatedly (upsert)
 export async function createSmith(externalId: string, displayName: string, agentId: string) {
   const res = await fetch(`${BASE_URL}/smiths`, {
     method: "POST",
@@ -17,13 +16,12 @@ export async function createSmith(externalId: string, displayName: string, agent
       display_name: displayName,
       agent_id: agentId,
       model: "claude-sonnet-4-6",
-      auto_memory: true
-    })
+      auto_memory: true,
+    }),
   });
   return res.json();
 }
 
-// Send transcript to agent — returns raw Response for SSE streaming
 export async function runInvoiceAgent(smithId: string, transcript: string, threadId: string) {
   return fetch(`${BASE_URL}/smiths/${smithId}/runs`, {
     method: "POST",
@@ -31,19 +29,20 @@ export async function runInvoiceAgent(smithId: string, transcript: string, threa
     body: JSON.stringify({
       input: [{ role: "user", content: transcript }],
       thread_id: threadId,
-      stream: true
-    })
+      stream: true,
+    }),
   });
 }
 
 export interface StreamCallbacks {
   onDelta?: (text: string) => void;
+  onToolExecuting?: (toolName: string) => void;
+  onToolCompleted?: (toolName: string, result: unknown) => void;
   onApprovalRequired?: (approvalId: string) => void;
   onCompleted?: () => void;
   onError?: (err: string) => void;
 }
 
-// Consume SSE stream from runInvoiceAgent response
 export async function streamRun(response: Response, callbacks: StreamCallbacks) {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -61,26 +60,36 @@ export async function streamRun(response: Response, callbacks: StreamCallbacks) 
       if (!line.startsWith("data: ")) continue;
       try {
         const event = JSON.parse(line.slice(6));
-        if (event.type === "message.delta") {
-          callbacks.onDelta?.(event.delta ?? "");
-        } else if (event.type === "approval.required") {
-          callbacks.onApprovalRequired?.(event.approval_id);
-        } else if (event.type === "run.completed") {
-          callbacks.onCompleted?.();
-        } else if (event.type === "run.failed") {
-          callbacks.onError?.(event.error ?? "Run failed");
+        switch (event.type) {
+          case "message.delta":
+            callbacks.onDelta?.(event.delta ?? "");
+            break;
+          case "tool.executing":
+            callbacks.onToolExecuting?.(event.tool ?? "");
+            break;
+          case "tool.completed":
+            callbacks.onToolCompleted?.(event.tool ?? "", event.result);
+            break;
+          case "approval.required":
+            callbacks.onApprovalRequired?.(event.approval_id);
+            break;
+          case "run.completed":
+            callbacks.onCompleted?.();
+            break;
+          case "run.failed":
+            callbacks.onError?.(event.error ?? "Run failed");
+            break;
         }
       } catch {}
     }
   }
 }
 
-// Approve the send_invoice tool call — one click = invoice sent
 export async function approveToolCall(approvalId: string) {
   const res = await fetch(`${BASE_URL}/approvals/${approvalId}/submit`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ decision: "approve" })
+    body: JSON.stringify({ decision: "approve" }),
   });
   return res.json();
 }
