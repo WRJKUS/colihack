@@ -12,8 +12,8 @@
   {
     "name": "Martens Sanitair BVBA",
     "aliases": ["Martens", "Martens sanitair", "Martens BVBA"],
-    "vat_number": "BE0742394851",
-    "peppol_id": "0208:0742394851",
+    "vat_number": "BE0742394844",
+    "peppol_id": "0208:0742394844",
     "address": "Kerkstraat 12, 2800 Mechelen",
     "contact_email": "jan.martens@martenssanitair.be",
     "default_hourly_rate": 65,
@@ -23,8 +23,8 @@
   {
     "name": "Dubois Facility Management",
     "aliases": ["Dubois", "Dubois FM", "Dubois facility"],
-    "vat_number": "BE0578234109",
-    "peppol_id": "0208:0578234109",
+    "vat_number": "BE0578234123",
+    "peppol_id": "0208:0578234123",
     "address": "Rue de la Loi 44, 1040 Etterbeek",
     "contact_email": "comptabilite@dubois-fm.be",
     "default_hourly_rate": 25,
@@ -35,8 +35,8 @@
   {
     "name": "Collibra NV",
     "aliases": ["Collibra"],
-    "vat_number": "BE0466949923",
-    "peppol_id": "0208:0466949923",
+    "vat_number": "BE0466949981",
+    "peppol_id": "0208:0466949981",
     "address": "Rue Picard 11, 1000 Bruxelles",
     "contact_email": "ap@collibra.com",
     "default_hourly_rate": 150,
@@ -56,8 +56,8 @@
   {
     "name": "Van den Berg Holding",
     "aliases": ["Van den Berg", "VdB Holding"],
-    "vat_number": "BE0891234567",
-    "peppol_id": "0208:0891234567",
+    "vat_number": "BE0891234515",
+    "peppol_id": "0208:0891234515",
     "address": "Antwerpsesteenweg 200, 2000 Antwerpen",
     "contact_email": "boekhouding@vdberg.be",
     "default_hourly_rate": 90,
