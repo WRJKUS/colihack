@@ -5,7 +5,6 @@ import { dirname, join } from "path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function getSellerInfo() {
-  // Try seller.json first (local override), fall back to env vars
   const sellerPath = join(__dirname, "../../data/seller.json");
   if (existsSync(sellerPath)) {
     return JSON.parse(readFileSync(sellerPath, "utf8"));
@@ -13,8 +12,9 @@ function getSellerInfo() {
   return {
     name: process.env.SELLER_NAME,
     vat_number: process.env.SELLER_VAT,
+    company_id: process.env.SELLER_VAT?.replace(/^BE/, ""),
     peppol_id: `${process.env.SENDER_PEPPOL_SCHEME}:${process.env.SENDER_PEPPOL_ID}`,
-    address: { street: process.env.SELLER_ADDRESS, country: "BE" },
+    address: process.env.SELLER_ADDRESS,
     iban: process.env.SELLER_IBAN,
     default_payment_terms_days: 30
   };
@@ -30,29 +30,30 @@ export async function createInvoice({
   const issueDate = new Date().toISOString().split("T")[0];
   const dueDate = new Date(Date.now() + (payment_terms_days ?? 30) * 86400000).toISOString().split("T")[0];
 
+  // e-invoice.be uses flat vendor_*/customer_* fields (not nested objects).
+  // Sender PEPPOL is auto-derived from the API key; only receiver goes in customer_peppol_id.
   const payload = {
-    type: "invoice",
-    number: invoice_number ?? `INV-${Date.now()}`,
-    issue_date: issueDate,
+    document_type: "INVOICE",
+    currency: "EUR",
+    invoice_id: invoice_number ?? `INV-${Date.now()}`,
+    invoice_date: issueDate,
     due_date: dueDate,
-    seller: {
-      name: seller.name,
-      tax_id: seller.vat_number,
-      address: seller.address,
-      iban: seller.iban
-    },
-    buyer: {
-      name: buyer_name,
-      tax_id: buyer_vat ?? null,
-      peppol_id: buyer_peppol_id,
-      address: buyer_address ?? null
-    },
-    lines: lines.map((l, i) => ({
-      id: String(i + 1),
+    vendor_name: seller.name,
+    vendor_tax_id: seller.vat_number,
+    vendor_company_id: seller.company_id ?? seller.vat_number?.replace(/^BE/, ""),
+    vendor_address: typeof seller.address === "object"
+      ? `${seller.address.street}, ${seller.address.zip ?? ""} ${seller.address.city ?? ""}`.trim()
+      : seller.address,
+    customer_name: buyer_name,
+    customer_tax_id: buyer_vat ?? null,
+    customer_company_id: buyer_vat ? buyer_vat.replace(/^BE/, "") : null,
+    customer_peppol_id: buyer_peppol_id ?? null,
+    customer_address: buyer_address ?? null,
+    items: lines.map(l => ({
       description: l.description,
       quantity: l.quantity,
       unit_price: l.unit_price,
-      vat_rate: l.vat_rate
+      tax_rate: l.vat_rate
     }))
   };
 
@@ -68,13 +69,12 @@ export async function createInvoice({
   if (!res.ok) throw new Error(`Create invoice failed: ${res.status} ${await res.text()}`);
   const doc = await res.json();
 
-  // Compute totals for display
   const totalExclVat = lines.reduce((s, l) => s + l.quantity * l.unit_price, 0);
   const vatAmount = lines.reduce((s, l) => s + l.quantity * l.unit_price * l.vat_rate / 100, 0);
 
   return {
     document_id: doc.id,
-    invoice_number: payload.number,
+    invoice_number: doc.invoice_id,
     buyer: buyer_name,
     issue_date: issueDate,
     due_date: dueDate,
