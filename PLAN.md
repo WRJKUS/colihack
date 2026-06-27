@@ -104,8 +104,10 @@ This plan is grounded in the actual docs (e-invoice.be `llms.txt` + schema/auth 
 - ✅ Confirmed API shapes via docs: `POST /v1/agents {slug,name,instructions,model}`; `PUT /v1/tenant/mcp/{name} {url,auth,tool_allowlist,approval_policy}`; approval gate = server `destructiveHint` **OR** `approval_policy` match; approval resolves at `POST /v1/smiths/{id}/runs/{run_id}/submit`.
 - ✅ `agent/mcp-config.json` rewritten to the 7 real tools (matches live `tools/list`).
 - ✅ `agent/setup-ingram.mjs` — runnable script that creates the agent + registers the MCP + verifies discovery. Needs env `INGRAM_TOKEN`, `MCP_PUBLIC_URL`, `MCP_AUTH_SECRET`.
-- ⛔ **Blocker A — no `INGRAM_TOKEN`** (tenant-admin token) anywhere in repo/env.
-- ⛔ **Blocker B — no public MCP URL.** Server is `localhost:3001`; Ingram cloud can't reach it. Note: `index.js` uses `app.listen` (long-running Express), so plain Vercel serverless needs a refactor — a tunnel (cloudflared/ngrok) to the working local server, or a long-running host (Render/Railway/Fly), is the faster path.
+- ✅ **LIVE (wolf track):** deployed to **Cloudflare Workers** at `https://einvoice-wolf.riegler31.workers.dev` (src/worker.js + core.js, `nodejs_compat`, JSON-bundled data, env→process.env shim). Live `wolf_validate_invoice` → `valid:true`.
+- ✅ **Agent** `agt_1CcTkzST6nqLeQ3Dr7AHdQ` (`voice-invoice-wolf`) published v1 with `wolf_`-prefixed prompt.
+- ✅ **MCP `einvoice-wolf` registered** (tenant), `status: active`, all 7 `wolf_` tools discovered. Separate from Bassel's stale `einvoice` MCP.
+- Remaining: create a smith on the agent + run the demo sentence to confirm the tool chain and the `wolf_send_invoice` approval gate.
 
 ### Phase 3 — Frontend (voice flow)
 - Fix `approveToolCall` + `streamRun` (#4/#5): track `run_id`, submit proper envelope, render tool/pause events.
