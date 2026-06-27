@@ -11,7 +11,9 @@
       "Bash(git init *)",
       "Bash(git checkout *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
