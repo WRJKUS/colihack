@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:e-invoice-hackathon.netlify.app)",
+      "WebFetch(domain:docs.e-invoice.be)",
+      "WebFetch(domain:www.askdonna.com)",
+      "WebFetch(domain:cloud.ingram.tech)",
+      "WebFetch(domain:docs.lovable.dev)",
+      "Bash(gh auth *)",
+      "Bash(git --version)",
+      "Bash(git init *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
