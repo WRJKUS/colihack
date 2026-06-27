@@ -7,6 +7,9 @@ compatibility_flags = ["nodejs_compat"]
 # filesystem for seller.json). TOOL_PREFIX namespaces the tools as wolf_*.
 [vars]
 TOOL_PREFIX = "wolf_"
+# Frontend proxy: which agent the browser drives (token stays server-side).
+AGENT_ID = "agt_1CcTkzST6nqLeQ3Dr7AHdQ"
+APPROVAL_ACTOR = "voice-invoice-demo"
 SELLER_NAME = "collibra-hack"
 SELLER_VAT = "BE0999787908"
 SENDER_PEPPOL_SCHEME = "0208"

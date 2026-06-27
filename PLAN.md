@@ -49,8 +49,8 @@ This plan is grounded in the actual docs (e-invoice.be `llms.txt` + schema/auth 
 | 1 | `mcp-server/src/tools/create-invoice.js` | Payload used `type/number/issue_date/seller{}/buyer{}/lines[]` — **wrong field names**; would 422. | Rewrote to `document_type/invoice_id/invoice_date/vendor_*/customer_*/items[]`; shared `buildInvoicePayload()`; `tax_rate` string, per-line `tax`, `customer_peppol_id` for routing. Create path is **`/api/documents/`** (trailing slash required — bare path 405s). | ✅ **DONE — live create persisted a DRAFT** (`state:DRAFT`, total 133.10); schema `valid:true` |
 | 2 | `mcp-server/src/tools/validate-invoice.js` | Called `POST /api/documents/{id}/validate` — **no such endpoint**. | Re-pointed to `POST /api/validate/json` on the full payload **pre-create**; now takes invoice fields (not a `document_id`); parses `is_valid`/`issues`. Workflow reordered: validate → create. | ✅ **DONE — live-tested** |
 | 3 | `mcp-server/src/tools/send-invoice.js` | Sender/receiver passed as query params incl. undocumented `email`. | Confirmed query-param shape; pass `receiver_peppol_scheme/id` override, let sender derive from document; dropped `email`. | ✅ **DONE — live send `DRAFT→TRANSIT→SENT`** (sandbox, user-authorized) |
-| 4 | `frontend/lib/ingram.ts` → `approveToolCall` | Hits `POST /v1/approvals/{id}/submit` with `{decision}` — **wrong endpoint + body** (`BASSEL.md` step 5 has the same bug). | Track `run_id` (from `run.started`), submit to `/v1/smiths/{smith_id}/runs/{run_id}/submit` with `{kind:"approval_decision", approval_id, decision, actor}`. | ⏳ Phase 3 — **endpoint reconfirmed via docs** |
-| 5 | `frontend/lib/ingram.ts` → `streamRun` | Only handles `message.delta`/`approval.required`/`run.completed`/`run.failed`; misses `run.started` (needed for `run_id`), `tool.executing`, `tool.completed`, `run.paused`. | Capture `run_id`; surface tool/pause events in UI. | ⏳ Phase 3 |
+| 4 | `frontend/lib/ingram.ts` → `approveToolCall` | Hits `POST /v1/approvals/{id}/submit` with `{decision}` — **wrong endpoint + body** (`BASSEL.md` step 5 has the same bug). | Now goes through the Worker proxy → `/v1/smiths/{smith_id}/runs/{run_id}/submit` with `{kind:"approval_decision", approval_id, decision, actor}`. Token server-side. | ✅ **DONE** (live-tested via proxy: reject path confirmed no-send) |
+| 5 | `frontend/lib/ingram.ts` → `streamRun` | Parsed `event.type` from the `data` JSON — **that field never exists**; the event NAME is on the SSE `event:` line, so no events ever matched. | Rewrote SSE parser to key on the `event:` line; tracks `run.started` (smith_id/run_id) + tool events. | ✅ **DONE** |
 | 6 | `agent/mcp-config.json` | Stale: listed `lookup_peppol_participant`, missing `lookup_client/get_vat_rate/lookup_service`. | Rewrote to the 7 real tools; confirmed `PUT /v1/tenant/mcp/{name}` supports `tool_allowlist` + `approval_policy`. Allowlist now matches live `tools/list` exactly. | ✅ **DONE** |
 
 **Net:** the create → validate → approve happy path does **not** work as written. Fixing it is the core of the build.
@@ -109,10 +109,13 @@ This plan is grounded in the actual docs (e-invoice.be `llms.txt` + schema/auth 
 - ✅ **MCP `einvoice-wolf` registered** (tenant), `status: active`, all 7 `wolf_` tools discovered. Separate from Bassel's stale `einvoice` MCP.
 - Remaining: create a smith on the agent + run the demo sentence to confirm the tool chain and the `wolf_send_invoice` approval gate.
 
-### Phase 3 — Frontend (voice flow)
-- Fix `approveToolCall` + `streamRun` (#4/#5): track `run_id`, submit proper envelope, render tool/pause events.
-- Ships alongside the management screens from Phase 1.5 (customers / services / company settings).
-- Speech-to-text per the section below; the produced transcript string is sent verbatim to `runInvoiceAgent(smithId, transcript, threadId)`.
+### Phase 3 — Frontend (voice flow) — ✅ LIVE (wolf track)
+- **Token-safe proxy** added to the Worker (`/api/run`, `/api/approve`): the Ingram admin token is a Worker secret and never reaches the browser. Verified live (run streams the chain; approve(reject) confirmed no-send).
+- **Runnable app** `frontend-wolf/` (Vite + React + TS): Web Speech mic → proxy → live tool progress + streamed agent summary → amber approval panel → approve/reject. Deployed to **Cloudflare Pages: https://voice-invoice-wolf.pages.dev**.
+- **`frontend/lib/ingram.ts` rewritten** to the corrected contract (bugs #4/#5) for Daniel's Lovable app: proxy-based, `event:`-line SSE parsing, correct approval submit.
+- Speech-to-text = browser Web Speech API (per STT section), Chrome-only.
+- ⚠️ Not browser-tested headlessly: the live voice capture + the real approve→PEPPOL-send need a human in Chrome. Thread continuity remains non-functional, but the one-turn agent design means it isn't needed.
+- Still plan-only: the Phase 1.5 management screens (customers/services/company CRUD UI).
 
 ### Speech-to-text (STT)
 **Current choice (*confirmed* in code/docs):** the **browser Web Speech API** — `window.SpeechRecognition || window.webkitSpeechRecognition`, client-side, no API key. Implemented in `frontend/DANIEL.md:48-59`; locales **nl-BE / fr-BE** (`README.md:45`); **Chrome-only** (`SETUP.md:9`, `DANIEL.md:156` — fails in Firefox/Safari).
