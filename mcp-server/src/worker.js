@@ -12,6 +12,7 @@ import services from "../data/services.json" with { type: "json" };
 
 const INGRAM = "https://api.cloud.ingram.tech";
 const IC_VERSION = "2026-05-01";
+const EINVOICE = "https://api.e-invoice.be";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -128,6 +129,31 @@ export default {
         return json(s);
       }
       return json({ error: "method not allowed" }, 405);
+    }
+
+    // --- Document retrieval for PDF generation (JSON) — key stays server-side ---
+    if (request.method === "GET" && pathname === "/api/document") {
+      const id = url.searchParams.get("id");
+      if (!id) return json({ error: "id required" }, 400);
+      const res = await fetch(`${EINVOICE}/api/documents/${id}`, { headers: { Authorization: `Bearer ${env.EINVOICE_API_KEY}` } });
+      if (!res.ok) return json({ error: "document fetch failed", detail: await res.text() }, 502);
+      return json(await res.json());
+    }
+
+    // --- UBL XML download: e-invoice returns a signed_url; we fetch + stream it. ---
+    if (request.method === "GET" && pathname === "/api/document/ubl") {
+      const id = url.searchParams.get("id");
+      if (!id) return json({ error: "id required" }, 400);
+      const metaRes = await fetch(`${EINVOICE}/api/documents/${id}/ubl`, { headers: { Authorization: `Bearer ${env.EINVOICE_API_KEY}` } });
+      if (!metaRes.ok) return json({ error: "ubl meta fetch failed", detail: await metaRes.text() }, 502);
+      const meta = await metaRes.json();
+      if (!meta.signed_url) return json({ error: "no signed_url in UBL response" }, 502);
+      const xmlRes = await fetch(meta.signed_url);
+      if (!xmlRes.ok) return json({ error: "ubl download failed", status: xmlRes.status }, 502);
+      const name = meta.file_name && /\.xml$/i.test(meta.file_name) ? meta.file_name : `${id}.xml`;
+      return new Response(xmlRes.body, {
+        headers: { "Content-Type": "application/xml", "Content-Disposition": `attachment; filename="${name}"`, ...cors }
+      });
     }
 
     // --- Speech-to-text via Workers AI (Whisper). Body = raw audio bytes. ---

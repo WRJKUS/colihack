@@ -107,4 +107,6 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 .done h3 { color: var(--green); }
 .muted { color: var(--muted); }
+.downloads { display: flex; gap: 10px; margin: 12px 0; flex-wrap: wrap; }
+.downloads .ghost { padding: 8px 14px; }
 .error { background: #fef2f2; border: 1px solid #fecaca; color: var(--red); padding: 10px 14px; border-radius: 8px; }

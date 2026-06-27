@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { runAgent, resolveApproval, transcribe, AgentEvent, RunIds } from "./lib/agent";
+import { getDocument, ublDownloadUrl, triggerDownload } from "./lib/doc";
+import { downloadInvoicePDF } from "./lib/pdf";
 import Manage from "./Manage";
 
 // Encode captured Float32 audio chunks as a 16-bit PCM WAV Blob (Whisper-friendly).
@@ -48,6 +50,8 @@ export default function App() {
   const [agentText, setAgentText] = useState("");
   const [ids, setIds] = useState<RunIds>({ smith_id: "", run_id: "" });
   const [approvalArgs, setApprovalArgs] = useState<any>(null);
+  const [documentId, setDocumentId] = useState("");
+  const [docBusy, setDocBusy] = useState(false);
   const [error, setError] = useState("");
   const idsRef = useRef<RunIds>({ smith_id: "", run_id: "" });
 
@@ -67,6 +71,7 @@ export default function App() {
         idsRef.current = { ...idsRef.current, approval_id: ev.approval_id };
         setIds(idsRef.current);
         setApprovalArgs(ev.args);
+        if (ev.args?.document_id) setDocumentId(ev.args.document_id);
         setStep("approval");
         break;
       case "run.failed":
@@ -147,9 +152,29 @@ export default function App() {
     setStep("done");
   };
 
+  const downloadPdf = async () => {
+    if (!documentId) return;
+    setDocBusy(true);
+    try {
+      const doc = await getDocument(documentId);
+      downloadInvoicePDF(doc);
+    } catch (e: any) {
+      setError("Could not build PDF: " + (e?.message ?? String(e)));
+    }
+    setDocBusy(false);
+  };
+  const downloadUbl = () => { if (documentId) triggerDownload(ublDownloadUrl(documentId)); };
+
+  const Downloads = () => documentId ? (
+    <div className="downloads">
+      <button className="ghost sm" onClick={downloadPdf} disabled={docBusy}>{docBusy ? "Building…" : "⬇ Download PDF"}</button>
+      <button className="ghost sm" onClick={downloadUbl}>⬇ Download UBL (XML)</button>
+    </div>
+  ) : null;
+
   const reset = () => {
     setStep("input"); setTranscript(""); setSteps([]); setAgentText("");
-    setApprovalArgs(null); setError("");
+    setApprovalArgs(null); setDocumentId(""); setError("");
     idsRef.current = { smith_id: "", run_id: "" };
     setIds(idsRef.current);
   };
@@ -223,6 +248,7 @@ export default function App() {
               {approvalArgs.email && <div><dt>Email</dt><dd>{approvalArgs.email}</dd></div>}
             </dl>
             <p className="warn">Approving sends the invoice to the client’s PEPPOL inbox — this is real.</p>
+            <Downloads />
             <div className="btn-row">
               <button className="success" onClick={() => decide("approve")}>Approve &amp; Send</button>
               <button className="ghost" onClick={() => decide("reject")}>Reject</button>
@@ -235,6 +261,7 @@ export default function App() {
           <section className="card done">
             <h3>✅ Done</h3>
             <p className="muted">The agent’s final response (including bookkeeping) is shown above.</p>
+            <Downloads />
             <button className="primary" onClick={reset}>New invoice</button>
           </section>
         )}
