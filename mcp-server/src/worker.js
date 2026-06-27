@@ -77,6 +77,19 @@ export default {
       return new Response(runRes.body, { headers: sseHeaders });
     }
 
+    // --- Speech-to-text via Workers AI (Whisper). Body = raw audio bytes. ---
+    if (request.method === "POST" && pathname === "/api/transcribe") {
+      if (!env.AI) return json({ error: "AI binding not configured" }, 500);
+      try {
+        const buf = await request.arrayBuffer();
+        if (!buf || buf.byteLength === 0) return json({ error: "empty audio" }, 400);
+        const res = await env.AI.run("@cf/openai/whisper", { audio: [...new Uint8Array(buf)] });
+        return json({ text: (res?.text ?? "").trim() });
+      } catch (e) {
+        return json({ error: "transcription failed", detail: String(e?.message ?? e) }, 502);
+      }
+    }
+
     // --- Frontend proxy: resolve an approval (resumes the run, streams SSE) ---
     if (request.method === "POST" && pathname === "/api/approve") {
       if (!env.INGRAM_TOKEN) return json({ error: "Proxy not configured" }, 500);

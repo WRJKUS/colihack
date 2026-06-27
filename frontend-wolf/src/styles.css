@@ -40,7 +40,8 @@ body {
 }
 .mic.rec { background: var(--red); color: #fff; animation: pulse 1.2s infinite; }
 @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)} 50%{box-shadow:0 0 0 12px rgba(220,38,38,0)} }
-.hint { margin: 0 0 6px; color: var(--muted); }
+.hint { margin: 0 0 4px; color: var(--ink); font-weight: 600; }
+.micnote { margin: 0; color: var(--muted); font-size: 12px; }
 
 textarea {
   width: 100%; min-height: 84px; padding: 12px;

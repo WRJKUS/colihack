@@ -1,5 +1,27 @@
 import { useRef, useState } from "react";
-import { runAgent, resolveApproval, AgentEvent, RunIds } from "./lib/agent";
+import { runAgent, resolveApproval, transcribe, AgentEvent, RunIds } from "./lib/agent";
+
+// Encode captured Float32 audio chunks as a 16-bit PCM WAV Blob (Whisper-friendly).
+function encodeWAV(chunks: Float32Array[], sampleRate: number): Blob {
+  const total = chunks.reduce((s, c) => s + c.length, 0);
+  const samples = new Float32Array(total);
+  let off = 0;
+  for (const c of chunks) { samples.set(c, off); off += c.length; }
+  const buf = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buf);
+  const wr = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+  wr(0, "RIFF"); view.setUint32(4, 36 + samples.length * 2, true); wr(8, "WAVE");
+  wr(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  wr(36, "data"); view.setUint32(40, samples.length * 2, true);
+  let p = 44;
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(p, s < 0 ? s * 0x8000 : s * 0x7fff, true); p += 2;
+  }
+  return new Blob([view], { type: "audio/wav" });
+}
 
 type Step = "input" | "processing" | "approval" | "done";
 
@@ -17,14 +39,14 @@ const label = (t: string) => TOOL_LABEL[t] ?? t;
 export default function App() {
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
-  const [lang, setLang] = useState("nl-BE");
   const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const audioRef = useRef<any>(null);
   const [steps, setSteps] = useState<string[]>([]);
   const [agentText, setAgentText] = useState("");
   const [ids, setIds] = useState<RunIds>({ smith_id: "", run_id: "" });
   const [approvalArgs, setApprovalArgs] = useState<any>(null);
   const [error, setError] = useState("");
-  const recRef = useRef<any>(null);
   const idsRef = useRef<RunIds>({ smith_id: "", run_id: "" });
 
   const handleEvent = (ev: AgentEvent) => {
@@ -51,24 +73,52 @@ export default function App() {
     }
   };
 
-  const toggleMic = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { setError("Speech recognition needs Chrome (Web Speech API)."); return; }
-    if (recording) { recRef.current?.stop(); return; }
-    const rec = new SR();
-    rec.lang = lang;
-    rec.continuous = false;
-    rec.interimResults = true;
-    rec.onresult = (e: any) => {
-      const t = Array.from(e.results).map((r: any) => r[0].transcript).join("");
-      setTranscript(t);
-    };
-    rec.onend = () => setRecording(false);
-    rec.onerror = () => setRecording(false);
-    recRef.current = rec;
-    rec.start();
-    setRecording(true);
+  // Record mic audio with the Web Audio API (works on Chromium/Firefox, unlike
+  // the Google Web Speech API) and transcribe server-side via Workers AI Whisper.
+  const startRec = async () => {
+    setError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const ctx = new Ctx();
+      const source = ctx.createMediaStreamSource(stream);
+      const processor = ctx.createScriptProcessor(4096, 1, 1);
+      const chunks: Float32Array[] = [];
+      processor.onaudioprocess = (e: any) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+      source.connect(processor);
+      processor.connect(ctx.destination);
+      audioRef.current = { stream, ctx, source, processor, chunks };
+      setRecording(true);
+    } catch (e: any) {
+      setError("Microphone access failed: " + (e?.message ?? String(e)) + " — or just type below.");
+    }
   };
+
+  const stopRec = async () => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.processor.disconnect();
+    a.source.disconnect();
+    a.stream.getTracks().forEach((t: any) => t.stop());
+    const rate = a.ctx.sampleRate;
+    await a.ctx.close();
+    audioRef.current = null;
+    setRecording(false);
+
+    const wav = encodeWAV(a.chunks, rate);
+    if (wav.size < 2000) { setError("No audio captured — try again, or type below."); return; }
+    setTranscribing(true);
+    try {
+      const text = await transcribe(wav);
+      if (text) setTranscript(text);
+      else setError("Transcription came back empty — speak a bit longer, or type below.");
+    } catch (e: any) {
+      setError("Transcription failed: " + (e?.message ?? String(e)) + " — type below instead.");
+    }
+    setTranscribing(false);
+  };
+
+  const toggleMic = () => { if (transcribing) return; recording ? stopRec() : startRec(); };
 
   const process = async () => {
     if (!transcript.trim()) return;
@@ -116,16 +166,14 @@ export default function App() {
         {step === "input" && (
           <section className="card">
             <div className="mic-row">
-              <button className={`mic ${recording ? "rec" : ""}`} onClick={toggleMic}>
-                {recording ? "■" : "🎤"}
+              <button className={`mic ${recording ? "rec" : ""}`} onClick={toggleMic} disabled={transcribing}>
+                {transcribing ? "…" : recording ? "■" : "🎤"}
               </button>
               <div>
-                <p className="hint">{recording ? "Listening…" : "Tap to speak your job description"}</p>
-                <select value={lang} onChange={(e) => setLang(e.target.value)}>
-                  <option value="nl-BE">🇧🇪 Nederlands</option>
-                  <option value="fr-BE">🇧🇪 Français</option>
-                  <option value="en-GB">🇬🇧 English</option>
-                </select>
+                <p className="hint">
+                  {transcribing ? "Transcribing…" : recording ? "Listening — tap to stop" : "Tap to speak your job description"}
+                </p>
+                <p className="micnote">Server-side Whisper (works on Chromium) · or just type below</p>
               </div>
             </div>
             <textarea

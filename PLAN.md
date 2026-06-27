@@ -124,10 +124,8 @@ This plan is grounded in the actual docs (e-invoice.be `llms.txt` + schema/auth 
 - Chrome-only; requires mic permission + network. In Chrome the audio is sent to Google's servers, so it is free-to-us but **not offline** and needs working venue wifi.
 - Accuracy on Belgian-accented nl/fr and domain terms ("Peppol", company names like "Ingram") is **unconfirmed** — verify with a real mic test before relying on it.
 
-**Plan:**
-1. Keep Web Speech API as the primary path (zero cost, zero setup, already scaffolded).
-2. **Mic test in Phase 4** end-to-end checklist: speak the example sentence in nl-BE and confirm the transcript is usable.
-3. **Optional upgrade if accuracy is poor:** swap to a server-side STT (e.g. Whisper / Deepgram) behind a small `/api/transcribe` endpoint that takes recorded audio and returns text — same transcript contract downstream, so nothing else changes. Adds an API key + cost; only do this if the mic test fails. *(Provider/pricing unconfirmed — decide only if needed.)*
+**Plan — DONE (switched to server-side STT):**
+Web Speech API was tried first but **fails on Chromium** (the open-source build ships without Google's speech service key — `webkitSpeechRecognition` errors immediately regardless of mic permission). So `frontend-wolf` now uses **server-side Whisper via Cloudflare Workers AI**: the browser captures mic audio with the Web Audio API, encodes 16-bit PCM **WAV** in-browser (MediaRecorder's webm/opus isn't reliably accepted by Whisper; WAV is verified), and POSTs to the Worker's **`/api/transcribe`** (`@cf/openai/whisper`, no external API key). Verified live (WAV → 200 `{text}`). Works on Chromium/Firefox; typing is always available as a fallback.
 
 ### Phase 4 — End-to-end test (`SETUP.md`)
 - First, via the new UI: add the "Ingram" customer and the labour + drive services.

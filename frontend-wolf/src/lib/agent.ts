@@ -42,6 +42,19 @@ async function consume(res: Response, onEvent: (ev: AgentEvent) => void) {
   }
 }
 
+// Send recorded audio (WAV) to the Worker's Whisper endpoint; returns transcript.
+export async function transcribe(wav: Blob): Promise<string> {
+  const res = await fetch(`${BASE}/api/transcribe`, {
+    method: "POST",
+    headers: { "Content-Type": "audio/wav" },
+    body: wav
+  });
+  if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => "")}`);
+  const j = await res.json();
+  if (j.error) throw new Error(j.error);
+  return j.text || "";
+}
+
 export interface RunIds { smith_id: string; run_id: string; approval_id?: string; }
 
 /** Start a run from a spoken/typed message; streams events until paused or done. */

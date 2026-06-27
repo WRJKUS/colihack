@@ -3,6 +3,11 @@ main = "src/worker.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+# Workers AI — server-side speech-to-text (Whisper) so voice input works on
+# Chromium/Firefox (which lack the Google Web Speech service).
+[ai]
+binding = "AI"
+
 # Non-secret config. The seller identity is read from these on Workers (no
 # filesystem for seller.json). TOOL_PREFIX namespaces the tools as wolf_*.
 [vars]
