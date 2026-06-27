@@ -1,0 +1,55 @@
+{
+  "country": "Belgium",
+  "currency": "EUR",
+  "standard_rate": 21,
+  "rates": [
+    {
+      "rate": 21,
+      "category": "standard",
+      "description": "Standard rate — applies to all services and goods not listed below",
+      "examples": [
+        "IT consulting", "legal services", "accounting",
+        "cleaning services", "transport", "catering (staffing only)",
+        "security services", "repair of appliances",
+        "new construction (commercial or residential < 10 years)",
+        "electrical installation (new build)", "plumbing (new build)"
+      ]
+    },
+    {
+      "rate": 12,
+      "category": "restaurant_food",
+      "description": "Restaurant and catering — food component only (staffing at 21%)",
+      "examples": ["restaurant meals", "catering food supply", "event catering (food portion)"]
+    },
+    {
+      "rate": 6,
+      "category": "renovation",
+      "description": "Renovation of private residential buildings older than 10 years — labour only, not materials",
+      "examples": [
+        "roof renovation", "insulation works", "plumbing renovation (private home > 10y)",
+        "electrical renovation (private home > 10y)", "painting (private home > 10y)",
+        "flooring (private home > 10y)", "bathroom renovation (private home > 10y)"
+      ],
+      "conditions": [
+        "Building must be used exclusively or primarily as private dwelling",
+        "Building must be at least 10 years old",
+        "Applies to labour — materials are still 21%",
+        "Client must provide written declaration confirming conditions are met"
+      ]
+    },
+    {
+      "rate": 6,
+      "category": "social_housing",
+      "description": "Construction and renovation of social housing recognised by authorities",
+      "examples": ["OCMW/CPAS projects", "social housing construction"]
+    },
+    {
+      "rate": 0,
+      "category": "intra_eu_b2b",
+      "description": "Intra-EU B2B supply — buyer must be VAT-registered in another EU country",
+      "examples": ["services to Dutch company", "services to German GmbH"],
+      "conditions": ["Buyer must have valid EU VAT number", "Buyer must be in a different EU member state"]
+    }
+  ],
+  "decision_guide": "1. Is the buyer in another EU country and VAT-registered? → 0% (reverse charge). 2. Is the job renovation of a private home older than 10 years? → 6% on labour, 21% on materials. 3. Is the service food catering? → 12% on food, 21% on staffing. 4. Everything else → 21%."
+}

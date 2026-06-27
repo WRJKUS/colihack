@@ -1,49 +1,54 @@
 # Daniel — Frontend (Lovable)
 
-You own the frontend: a polished React app where a field worker speaks a job description and watches the invoice flow happen live on screen.
+You own the frontend: a polished React app where a field worker speaks a job description and watches the full invoice flow happen live.
 
-## What you're building
+---
 
-4 sequential panels:
-1. **Mic panel** — big record button, live transcript
-2. **Invoice preview** — extracted fields, editable, PEPPOL Valid badge
-3. **Approval panel** — "Send €278.07 to Martens Sanitair?" + one green button
-4. **Confirmation** — success + double-entry T-accounts
-
-## Step 1 — Generate UI in Lovable
+## Step 1 — Generate the UI in Lovable
 
 1. Go to [lovable.dev](https://lovable.dev) → new project
-2. Open `frontend/lovable-prompt.md` → paste into Lovable
-3. Let it generate the full React app
+2. Open `frontend/lovable-prompt.md` in this repo
+3. Paste the full prompt into Lovable
+4. Let it generate — takes ~2 min
 
-## Step 2 — Connect to GitHub
+---
+
+## Step 2 — Connect Lovable to GitHub
 
 In Lovable: **Settings → GitHub → Connect repository**
 - Repo: `bsselm/colihack`
 - Branch: `main`
 - Subfolder: `frontend/`
 
+Lovable pushes its generated code directly into `frontend/`. Pull when connected.
+
+---
+
 ## Step 3 — Environment variables
 
-In Lovable project settings, add:
+In Lovable **Settings → Environment variables**, add:
 ```
 VITE_INGRAM_TOKEN=<token from Bassel>
 VITE_AGENT_ID=<agt_... from Bassel>
 ```
 
-Update `frontend/lib/ingram.ts` line 2:
+Update `frontend/lib/ingram.ts` line 2 to use Vite env:
 ```typescript
 const API_KEY = import.meta.env.VITE_INGRAM_TOKEN ?? "";
 ```
 
+---
+
 ## Step 4 — Wire the mic (Web Speech API)
+
+Add to your `MicButton` component:
 
 ```typescript
 const startRecording = () => {
   const SpeechRecognition =
     (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const recognition = new SpeechRecognition();
-  recognition.lang = "nl-BE"; // Dutch Belgian for demo
+  recognition.lang = "nl-BE"; // Switch to "fr-BE" for French, "en-GB" for English
   recognition.continuous = false;
   recognition.interimResults = true;
 
@@ -60,6 +65,8 @@ const startRecording = () => {
 };
 ```
 
+---
+
 ## Step 5 — Wire Ingram Cloud
 
 ```typescript
@@ -67,56 +74,88 @@ import { createSmith, runInvoiceAgent, streamRun, approveToolCall } from "../lib
 
 const AGENT_ID = import.meta.env.VITE_AGENT_ID;
 
-// On page load — safe to call every time (upsert)
-const smith = await createSmith("demo_user_1", "Field Worker", AGENT_ID);
-const smithId = smith.id; // smt_...
+// On page load — upsert is safe, creates or returns existing smith
+useEffect(() => {
+  createSmith("demo_user_1", "Field Worker", AGENT_ID).then(s => setSmithId(s.id));
+}, []);
 
 // When user clicks "Process"
 const onProcess = async () => {
+  setIsProcessing(true);
   const threadId = `thread_${Date.now()}`;
   const response = await runInvoiceAgent(smithId, transcript, threadId);
 
   await streamRun(response, {
     onDelta: (text) => {
-      // Agent is thinking/responding — update invoice preview fields
-      setAgentOutput(prev => prev + text);
+      // Agent is reasoning — append to a hidden buffer
+      // Parse JSON fragments to extract invoice fields as they arrive
+      setAgentBuffer(prev => prev + text);
     },
     onApprovalRequired: (approvalId) => {
-      // Agent is ready to send — show approval modal
-      setApprovalId(approvalId);
-      setShowApproval(true);
+      // Agent is ready to send — show the approval panel
+      setCurrentApprovalId(approvalId);
+      setStep("approval");
     },
     onCompleted: () => {
-      // Everything done — show confirmation + T-accounts
-      setShowConfirmation(true);
+      // All done — show confirmation and bookkeeping
+      setStep("confirmation");
+      setIsProcessing(false);
     },
-    onError: (err) => console.error(err)
+    onError: (err) => {
+      console.error(err);
+      setIsProcessing(false);
+    }
   });
 };
 
 // When user clicks "Approve & Send"
 const onApprove = async () => {
-  await approveToolCall(approvalId);
-  setShowApproval(false);
-  // onCompleted fires from the resumed stream
+  await approveToolCall(currentApprovalId);
+  // Agent resumes automatically — onCompleted fires when done
 };
 ```
 
-## Step 6 — State to track
+---
+
+## Step 6 — State to manage
 
 ```typescript
+type Step = "input" | "preview" | "approval" | "confirmation";
+
+const [step, setStep] = useState<Step>("input");
 const [transcript, setTranscript] = useState("");
 const [isRecording, setIsRecording] = useState(false);
-const [agentOutput, setAgentOutput] = useState("");
-const [approvalId, setApprovalId] = useState("");
-const [showApproval, setShowApproval] = useState(false);
-const [showConfirmation, setShowConfirmation] = useState(false);
+const [isProcessing, setIsProcessing] = useState(false);
+const [smithId, setSmithId] = useState("");
+const [currentApprovalId, setCurrentApprovalId] = useState("");
+const [agentBuffer, setAgentBuffer] = useState("");
+
+// Reset
+const onNewInvoice = () => {
+  setStep("input");
+  setTranscript("");
+  setAgentBuffer("");
+};
 ```
+
+---
+
+## The 4 panels at a glance
+
+| Panel | Shows when | Key element |
+|-------|-----------|-------------|
+| `input` | Always (start) | Big red mic button, transcript box, "Process" |
+| `preview` | After agent creates + validates | Invoice card, PEPPOL Valid badge, progress steps |
+| `approval` | `onApprovalRequired` fires | Amber card, "Approve & Send" button |
+| `confirmation` | `onCompleted` fires | Green success, T-account table, "New Invoice" |
+
+---
 
 ## Notes for the demo
 
-- Use **Chrome** — Web Speech API only works in Chrome
-- Language is `nl-BE` (Belgian Dutch) — judges are Belgian
-- The approval modal is the money moment — make it visually bold
-- The T-account display must be on screen during the pitch
-- After "Approve & Send", the invoice is actually sent via PEPPOL — this is real
+- **Chrome only** — Web Speech API doesn't work in Firefox or Safari
+- Language `nl-BE` for the demo — judges are in Brussels
+- The **approval panel** is the critical moment — make it visually unmissable
+- The **T-account table** must be on screen at the end — judges are scoring bookkeeping
+- After "Approve & Send" the invoice is actually sent via PEPPOL — this is real
+- Test the full flow yourself before the pitch using the sentence: *"Fixed the boiler at Martens Sanitair, 3 hours labour at 65 euro, parts 87 euro"*

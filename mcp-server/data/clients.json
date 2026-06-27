@@ -1,0 +1,67 @@
+[
+  {
+    "name": "Proximus NV",
+    "aliases": ["Proximus", "Proximus telecom"],
+    "vat_number": "BE0202239951",
+    "peppol_id": "0208:0202239951",
+    "address": "Boulevard du Roi Albert II 27, 1030 Bruxelles",
+    "contact_email": "accounts@proximus.be",
+    "payment_terms_days": 30,
+    "notes": "Large telecom — always include PO reference if available"
+  },
+  {
+    "name": "Martens Sanitair BVBA",
+    "aliases": ["Martens", "Martens sanitair", "Martens BVBA"],
+    "vat_number": "BE0742394851",
+    "peppol_id": "0208:0742394851",
+    "address": "Kerkstraat 12, 2800 Mechelen",
+    "contact_email": "jan.martens@martenssanitair.be",
+    "default_hourly_rate": 65,
+    "payment_terms_days": 14,
+    "notes": "Regular client — plumbing work, prefers PDF copy by email"
+  },
+  {
+    "name": "Dubois Facility Management",
+    "aliases": ["Dubois", "Dubois FM", "Dubois facility"],
+    "vat_number": "BE0578234109",
+    "peppol_id": "0208:0578234109",
+    "address": "Rue de la Loi 44, 1040 Etterbeek",
+    "contact_email": "comptabilite@dubois-fm.be",
+    "default_hourly_rate": 25,
+    "recurring": true,
+    "payment_terms_days": 30,
+    "notes": "Weekly cleaning contract — recurring every Tuesday, standard 3h"
+  },
+  {
+    "name": "Collibra NV",
+    "aliases": ["Collibra"],
+    "vat_number": "BE0466949923",
+    "peppol_id": "0208:0466949923",
+    "address": "Rue Picard 11, 1000 Bruxelles",
+    "contact_email": "ap@collibra.com",
+    "default_hourly_rate": 150,
+    "payment_terms_days": 30,
+    "notes": "Data governance company — consulting and IT services, 21% VAT"
+  },
+  {
+    "name": "Belfius Bank NV",
+    "aliases": ["Belfius", "Belfius bank"],
+    "vat_number": "BE0403201185",
+    "peppol_id": "0208:0403201185",
+    "address": "Boulevard Pachéco 44, 1000 Bruxelles",
+    "contact_email": "fournisseurs@belfius.be",
+    "payment_terms_days": 60,
+    "notes": "Strict invoice requirements — include contract number in description"
+  },
+  {
+    "name": "Van den Berg Holding",
+    "aliases": ["Van den Berg", "VdB Holding"],
+    "vat_number": "BE0891234567",
+    "peppol_id": "0208:0891234567",
+    "address": "Antwerpsesteenweg 200, 2000 Antwerpen",
+    "contact_email": "boekhouding@vdberg.be",
+    "default_hourly_rate": 90,
+    "payment_terms_days": 21,
+    "notes": "Family holding — mixed services, confirm VAT rate per job type"
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "_instructions": "Copy this file to seller.json and fill in your sandbox company details. Do not commit seller.json — it contains credentials.",
+  "name": "Your Company Name",
+  "vat_number": "BE0XXXXXXXXX",
+  "peppol_id": "0208:XXXXXXXXX",
+  "peppol_scheme": "0208",
+  "address": {
+    "street": "Your Street 1",
+    "city": "Brussels",
+    "postal_code": "1000",
+    "country": "BE"
+  },
+  "iban": "BE00 0000 0000 0000",
+  "bic": "XXXXBEBB",
+  "contact_email": "invoicing@yourcompany.be",
+  "default_payment_terms_days": 30
+}

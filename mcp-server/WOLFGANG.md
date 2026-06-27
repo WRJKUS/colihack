@@ -1,6 +1,8 @@
-# Wolfgang — MCP Server
+# Wolfgang — MCP Server + Knowledge Base
 
-You own the MCP server: a Node.js app exposing 5 tools the AI agent calls to create and send PEPPOL invoices via e-invoice.be. Your goal: deploy to Vercel and send Bassel the URL.
+You own the MCP server: 6 tools the AI agent uses to look up clients, determine VAT rates, and send PEPPOL invoices via e-invoice.be.
+
+---
 
 ## Setup
 
@@ -11,93 +13,134 @@ cd colihack/mcp-server
 npm install
 
 cp .env.example .env
-# Fill in .env with values Bassel sends you:
-#   EINVOICE_API_KEY=...
+# Fill in .env with credentials from Bassel:
+#   EINVOICE_API_KEY
 #   SENDER_PEPPOL_SCHEME=0208
-#   SENDER_PEPPOL_ID=...
-#   MCP_AUTH_SECRET=...   ← Bassel generates this, same value both sides
+#   SENDER_PEPPOL_ID
+#   SELLER_NAME
+#   SELLER_VAT
+#   MCP_AUTH_SECRET
 
 npm run dev
-# Server starts on http://localhost:3001
+# Server on http://localhost:3001
+# You should see: "MCP server running on port 3001 — 6 clients loaded"
 ```
+
+---
+
+## Your 6 tools
+
+| Tool | File | What it does |
+|------|------|-------------|
+| `lookup_client` | `src/tools/lookup-client.js` | Checks `data/clients.json` first, then live PEPPOL network |
+| `get_vat_rate` | `src/tools/get-vat-rate.js` | Returns correct Belgian VAT rate (6/12/21%) with reasoning |
+| `create_invoice` | `src/tools/create-invoice.js` | Creates invoice via e-invoice.be (seller info from env) |
+| `validate_invoice` | `src/tools/validate-invoice.js` | PEPPOL compliance check |
+| `send_invoice` | `src/tools/send-invoice.js` | Sends via PEPPOL — **approval-gated** ⚠️ |
+| `book_entries` | `src/tools/book-entries.js` | Double-entry ledger entries |
+
+---
+
+## Knowledge base
+
+`data/clients.json` — 6 pre-seeded Belgian companies with PEPPOL IDs, default rates, and notes. The `lookup_client` tool searches this first (instant, reliable for demo) then falls back to the live PEPPOL network.
+
+`data/vat-rules.json` — Belgian VAT rules used by `get_vat_rate`.
+
+`data/seller.example.json` — template for your company details. Copy to `data/seller.json` (gitignored) and fill in:
+```bash
+cp data/seller.example.json data/seller.json
+# Edit seller.json with the sandbox company details Bassel sends you
+```
+If `seller.json` doesn't exist, the tool reads seller info from `.env` vars instead.
+
+---
 
 ## Test locally
 
-The server speaks MCP JSON-RPC 2.0 over `POST /mcp`. Test each tool:
-
 ```bash
-# Health check (no auth needed)
+# Health — shows how many clients loaded
 curl http://localhost:3001/health
 
-# PEPPOL participant lookup
+# List all 6 tools
 curl -X POST http://localhost:3001/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_MCP_AUTH_SECRET" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
-# List tools
+# Look up a client (from local DB)
 curl -X POST http://localhost:3001/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_MCP_AUTH_SECRET" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"lookup_peppol_participant","arguments":{"query":"Proximus","country_code":"BE"}}}'
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"lookup_client","arguments":{"query":"Martens"}}}'
 
-# Create test invoice
+# Get VAT rate for plumbing
+curl -X POST http://localhost:3001/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_MCP_AUTH_SECRET" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_vat_rate","arguments":{"service_description":"boiler repair and plumbing work"}}}'
+
+# Create a test invoice (use a real PEPPOL ID from clients.json)
 curl -X POST http://localhost:3001/mcp \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_MCP_AUTH_SECRET" \
   -d '{
-    "jsonrpc":"2.0","id":3,"method":"tools/call",
-    "params":{
-      "name":"create_invoice",
-      "arguments":{
-        "seller_name":"Test Company",
-        "seller_vat":"BE0123456789",
-        "buyer_name":"Proximus",
-        "buyer_peppol_id":"0208:0202239951",
-        "lines":[
-          {"description":"Labour","quantity":3,"unit_price":65,"vat_rate":21},
-          {"description":"Parts","quantity":1,"unit_price":87,"vat_rate":21}
-        ]
-      }
-    }
+    "jsonrpc":"2.0","id":4,"method":"tools/call",
+    "params":{"name":"create_invoice","arguments":{
+      "buyer_name":"Martens Sanitair BVBA",
+      "buyer_peppol_id":"0208:0742394851",
+      "lines":[
+        {"description":"Labour — boiler repair","quantity":3,"unit_price":65,"vat_rate":21},
+        {"description":"Parts — pump and thermostat","quantity":1,"unit_price":87,"vat_rate":21}
+      ]
+    }}
   }'
 ```
+
+---
 
 ## Deploy to Vercel
 
 ```bash
-# Install Vercel CLI
 npm install -g vercel
-
-# Deploy from mcp-server folder
 vercel
 
-# Add env vars
+# Add env vars (one by one when prompted, or via Vercel dashboard)
 vercel env add EINVOICE_API_KEY
 vercel env add SENDER_PEPPOL_SCHEME
 vercel env add SENDER_PEPPOL_ID
+vercel env add SELLER_NAME
+vercel env add SELLER_VAT
 vercel env add MCP_AUTH_SECRET
 
-# Production deploy
 vercel --prod
 ```
 
-**Send Bassel your Vercel URL** (e.g. `https://colihack-mcp-server.vercel.app`) so he can register it in Ingram Cloud.
+**Send Bassel your Vercel URL** (e.g. `https://colihack-mcp-server.vercel.app`) as soon as it's deployed. He needs it to register the MCP server in Ingram Cloud.
 
-## Your 5 tools
+---
 
-| Tool | File | What it does |
-|------|------|-------------|
-| `lookup_peppol_participant` | `src/tools/lookup-peppol.js` | Finds company PEPPOL ID by name |
-| `create_invoice` | `src/tools/create-invoice.js` | Creates invoice via e-invoice.be |
-| `validate_invoice` | `src/tools/validate-invoice.js` | PEPPOL compliance check |
-| `send_invoice` | `src/tools/send-invoice.js` | Sends via PEPPOL — approval-gated! |
-| `book_entries` | `src/tools/book-entries.js` | Generates double-entry ledger |
+## Adding more clients to the knowledge base
 
-## Important: auth middleware
+Edit `data/clients.json` and add entries in this format:
+```json
+{
+  "name": "Full Company Name NV",
+  "aliases": ["Short name", "Common nickname"],
+  "vat_number": "BE0XXXXXXXXX",
+  "peppol_id": "0208:XXXXXXXXX",
+  "address": "Street 1, City",
+  "contact_email": "ap@company.be",
+  "default_hourly_rate": 65,
+  "payment_terms_days": 30,
+  "notes": "Any useful context for the agent"
+}
+```
 
-Ingram Cloud sends `Authorization: Bearer YOUR_MCP_AUTH_SECRET` on every request. The server checks this in `authMiddleware`. Make sure the `MCP_AUTH_SECRET` env var in Vercel exactly matches what Bassel used when registering the MCP server.
+Commit and push — the Vercel deployment auto-updates.
 
-## Important: send_invoice is approval-gated
+---
 
-`send_invoice` has `destructiveHint: true` in the tool definition. This causes Ingram Cloud to pause before executing it and ask the user to approve. Do not remove this annotation — it's our "accountant just signs" demo moment.
+## Important: `send_invoice` is approval-gated
+
+The tool has `"destructiveHint": true`. Ingram Cloud will pause the agent run before executing it and wait for the user to click "Approve & Send" in the UI. Do not remove this — it's the "accountant just signs" demo moment the judges are scoring highest.
