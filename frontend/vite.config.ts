@@ -12,4 +12,15 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    server: {
+      proxy: {
+        "/api/ingram": {
+          target: "https://api.cloud.ingram.tech",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/ingram/, "/v1"),
+        },
+      },
+    },
+  },
 });

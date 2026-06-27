@@ -1,4 +1,6 @@
-const BASE_URL = "https://api.cloud.ingram.tech/v1";
+const BASE_URL = (import.meta as { env: Record<string, string> }).env?.DEV
+  ? "/api/ingram"
+  : "https://api.cloud.ingram.tech/v1";
 const API_KEY = (import.meta as { env: Record<string, string> }).env?.VITE_INGRAM_TOKEN ?? "";
 
 const headers = () => ({
@@ -47,6 +49,7 @@ export async function streamRun(response: Response, callbacks: StreamCallbacks) 
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let currentEventType = "";
 
   while (true) {
     const { value, done } = await reader.read();
@@ -57,29 +60,34 @@ export async function streamRun(response: Response, callbacks: StreamCallbacks) 
     buffer = lines.pop() ?? "";
 
     for (const line of lines) {
+      if (line.startsWith("event: ")) {
+        currentEventType = line.slice(7).trim();
+        continue;
+      }
       if (!line.startsWith("data: ")) continue;
       try {
-        const event = JSON.parse(line.slice(6));
-        switch (event.type) {
+        const data = JSON.parse(line.slice(6));
+        switch (currentEventType) {
           case "message.delta":
-            callbacks.onDelta?.(event.delta ?? "");
+            callbacks.onDelta?.(data.delta ?? "");
             break;
           case "tool.executing":
-            callbacks.onToolExecuting?.(event.tool ?? "");
+            callbacks.onToolExecuting?.(data.tool ?? "");
             break;
           case "tool.completed":
-            callbacks.onToolCompleted?.(event.tool ?? "", event.result);
+            callbacks.onToolCompleted?.(data.tool ?? "", data.result);
             break;
           case "approval.required":
-            callbacks.onApprovalRequired?.(event.approval_id);
+            callbacks.onApprovalRequired?.(data.approval_id);
             break;
           case "run.completed":
             callbacks.onCompleted?.();
             break;
           case "run.failed":
-            callbacks.onError?.(event.error ?? "Run failed");
+            callbacks.onError?.(data.error ?? "Run failed");
             break;
         }
+        currentEventType = "";
       } catch {}
     }
   }
